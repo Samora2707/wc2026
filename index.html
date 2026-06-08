@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WC2026 Predictor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --green: #1a6b3c;
+    --green-light: #22883f;
+    --green-dark: #0d4025;
+    --gold: #f5c518;
+    --gold-dark: #c9a200;
+    --red: #c0392b;
+    --bg: #0e1c14;
+    --surface: #162119;
+    --surface2: #1d2e22;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f4f0;
+    --muted: #7a9a82;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* AUTH SCREEN */
+  #auth-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 2rem;
+    background: radial-gradient(ellipse at top, #1a3a22 0%, #0e1c14 60%);
+  }
+  .auth-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 380px;
+  }
+  .auth-logo { text-align: center; margin-bottom: 2rem; }
+  .auth-logo .trophy { font-size: 3rem; }
+  .auth-logo h1 { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 2px; color: var(--gold); }
+  .auth-logo p { color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }
+  .auth-field { margin-bottom: 1rem; }
+  .auth-field label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 1px; }
+  .auth-field input, .auth-field select {
+    width: 100%; padding: 0.75rem 1rem;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-size: 0.95rem; font-family: inherit;
+  }
+  .auth-field input:focus, .auth-field select:focus { outline: none; border-color: var(--green-light); }
+  .btn-primary {
+    width: 100%; padding: 0.85rem; background: var(--green);
+    border: none; border-radius: var(--radius); color: white;
+    font-size: 1rem; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover { background: var(--green-light); }
+  .auth-error { color: #e74c3c; font-size: 0.85rem; margin-top: 0.75rem; text-align: center; display: none; }
+
+  /* MAIN APP */
+  #app { display: none; }
+
+  /* TOP NAV */
+  .topnav {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem 1.5rem; position: sticky; top: 0; z-index: 100;
+  }
+  .topnav-logo { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; color: var(--gold); letter-spacing: 2px; }
+  .topnav-user { display: flex; align-items: center; gap: 0.75rem; }
+  .user-badge {
+    background: var(--green-dark); border: 1px solid var(--green);
+    border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.85rem; font-weight: 500;
+  }
+  .admin-badge {
+    background: #2a1a00; border: 1px solid var(--gold-dark);
+    color: var(--gold); border-radius: 20px; padding: 0.3rem 0.7rem; font-size: 0.75rem;
+  }
+  .btn-sm {
+    padding: 0.35rem 0.85rem; background: transparent;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--muted); font-size: 0.8rem; cursor: pointer; font-family: inherit;
+  }
+  .btn-sm:hover { border-color: var(--muted); color: var(--text); }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 1.5rem; }
+  .tab-btn {
+    padding: 0.85rem 1.25rem; background: none; border: none;
+    color: var(--muted); font-size: 0.9rem; cursor: pointer; font-family: inherit;
+    border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s;
+  }
+  .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab-btn:hover { color: var(--text); }
+
+  /* CONTENT */
+  .content { padding: 1.5rem; max-width: 900px; margin: 0 auto; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* SECTION HEADER */
+  .section-hd { margin-bottom: 1.25rem; }
+  .section-hd h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: var(--gold); }
+  .section-hd p { color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }
+
+  /* WEEK SELECTOR */
+  .week-selector {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+  }
+  .week-btn {
+    padding: 0.4rem 0.9rem; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 20px;
+    color: var(--muted); font-size: 0.82rem; cursor: pointer; font-family: inherit;
+  }
+  .week-btn.active { background: var(--green-dark); border-color: var(--green); color: var(--text); }
+
+  /* FIXTURE CARD */
+  .fixture-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 0.75rem; overflow: hidden;
+  }
+  .fixture-header {
+    padding: 0.65rem 1rem; background: var(--surface2);
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .fixture-date { font-size: 0.78rem; color: var(--muted); }
+  .fixture-status { font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 10px; }
+  .status-open { background: #0d3a1a; color: #4ade80; border: 1px solid #22883f; }
+  .status-locked { background: #2a1500; color: var(--gold); border: 1px solid var(--gold-dark); }
+  .status-scored { background: #1a1a2e; color: #818cf8; border: 1px solid #4f46e5; }
+  .status-void { background: #1a0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+
+  .fixture-body { padding: 1rem; display: flex; align-items: center; gap: 1rem; }
+  .team-side { flex: 1; text-align: center; }
+  .team-flag { font-size: 2rem; }
+  .team-name { font-size: 0.85rem; font-weight: 500; margin-top: 0.2rem; }
+  .vs-col { text-align: center; min-width: 80px; }
+  .vs-text { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.5rem; }
+
+  .score-inputs { display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
+  .score-inp {
+    width: 44px; height: 44px; text-align: center; font-size: 1.2rem; font-weight: 600;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: inherit;
+  }
+  .score-inp:focus { outline: none; border-color: var(--green-light); }
+  .score-inp:disabled { opacity: 0.5; cursor: not-allowed; }
+  .score-sep { color: var(--muted); font-size: 1.1rem; font-weight: 600; }
+
+  .actual-result { font-size: 1.3rem; font-weight: 600; color: var(--gold); }
+
+  .prediction-pts {
+    text-align: center; margin-top: 0.75rem; font-size: 0.8rem;
+  }
+  .pts-badge {
+    display: inline-block; padding: 0.2rem 0.7rem; border-radius: 10px;
+    font-weight: 600; font-size: 0.82rem;
+  }
+  .pts-5 { background: #0a3a1a; color: #4ade80; border: 1px solid #16a34a; }
+  .pts-3 { background: #0a1e3a; color: #60a5fa; border: 1px solid #2563eb; }
+  .pts-2 { background: #2a2000; color: #fbbf24; border: 1px solid #d97706; }
+  .pts-0 { background: #1a0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+
+  .save-btn {
+    margin-top: 1rem; padding: 0.6rem 1.5rem;
+    background: var(--green); border: none; border-radius: var(--radius);
+    color: white; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .save-btn:hover { background: var(--green-light); }
+  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* TABLES */
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin-bottom: 1.5rem;
+  }
+  .table-title {
+    padding: 0.85rem 1.25rem; background: var(--surface2);
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem;
+    letter-spacing: 1px; color: var(--gold); border-bottom: 1px solid var(--border);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 0.6rem 1rem; font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted); text-align: left; background: var(--surface2); }
+  td { padding: 0.75rem 1rem; font-size: 0.9rem; border-top: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .pos-num { font-weight: 700; color: var(--muted); font-size: 0.85rem; }
+  .pos-1 { color: var(--gold); }
+  .pos-2 { color: #94a3b8; }
+  .pos-3 { color: #cd7c3a; }
+  .pts-num { font-weight: 700; font-size: 1rem; color: var(--gold); }
+  .stat-num { font-size: 0.9rem; color: var(--muted); }
+
+  /* ADMIN PANEL */
+  .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+  @media(max-width: 600px) { .admin-grid { grid-template-columns: 1fr; } }
+  .admin-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem;
+  }
+  .admin-card h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: var(--gold); }
+  .form-field { margin-bottom: 0.75rem; }
+  .form-field label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.35rem; }
+  .form-field input, .form-field select {
+    width: 100%; padding: 0.6rem 0.85rem;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 0.88rem; font-family: inherit;
+  }
+  .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--green-light); }
+  .btn-action {
+    padding: 0.6rem 1.25rem; background: var(--green-dark);
+    border: 1px solid var(--green); border-radius: 8px;
+    color: var(--text); font-size: 0.85rem; cursor: pointer; font-family: inherit; font-weight: 500;
+  }
+  .btn-action:hover { background: var(--green); }
+  .btn-danger {
+    padding: 0.4rem 0.9rem; background: #2a0a0a;
+    border: 1px solid var(--red); border-radius: 8px;
+    color: #f87171; font-size: 0.8rem; cursor: pointer; font-family: inherit;
+  }
+
+  .user-list { margin-top: 0.75rem; }
+  .user-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem;
+  }
+  .user-name { font-weight: 500; }
+  .user-role { font-size: 0.72rem; color: var(--muted); }
+
+  .result-entry {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem 0; border-bottom: 1px solid var(--border);
+  }
+  .result-match { flex: 1; font-size: 0.85rem; }
+  .result-inputs { display: flex; align-items: center; gap: 0.4rem; }
+  .result-inp {
+    width: 38px; height: 34px; text-align: center;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 0.95rem; font-family: inherit;
+  }
+
+  .toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    background: var(--green); color: white;
+    padding: 0.75rem 1.25rem; border-radius: var(--radius);
+    font-size: 0.9rem; font-weight: 500; z-index: 9999;
+    transform: translateY(100px); opacity: 0; transition: all 0.3s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+  /* PREDICTIONS VIEW (other players) */
+  .predictions-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .predictions-table th { padding: 0.5rem 0.75rem; font-size: 0.72rem; }
+  .predictions-table td { padding: 0.5rem 0.75rem; }
+  .pred-cell { text-align: center; font-weight: 500; }
+  .hidden-pred { color: var(--muted); font-style: italic; font-size: 0.78rem; }
+
+  .info-box {
+    background: #0a1e3a; border: 1px solid #1e3a5f;
+    border-radius: var(--radius); padding: 0.85rem 1rem;
+    font-size: 0.83rem; color: #93c5fd; margin-bottom: 1.25rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="trophy">🏆</div>
+      <h1>WC2026 Predictor</h1>
+      <p>World Cup Mini League · Test Edition</p>
+    </div>
+    <div class="auth-field">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="Enter your username" autocomplete="off">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="Enter your password">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+    <div class="auth-error" id="auth-error">Invalid username or password</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topnav">
+    <div class="topnav-logo">⚽ WC2026 PREDICTOR</div>
+    <div class="topnav-user">
+      <span class="user-badge" id="nav-username"></span>
+      <span class="admin-badge" id="nav-admin" style="display:none">ADMIN</span>
+      <button class="btn-sm" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('predictions')">My Predictions</button>
+    <button class="tab-btn" onclick="switchTab('tables')">Tables</button>
+    <button class="tab-btn" onclick="switchTab('all-preds')">All Predictions</button>
+    <button class="tab-btn admin-only" id="admin-tab" onclick="switchTab('admin')" style="display:none">Admin</button>
+  </div>
+
+  <div class="content">
+
+    <!-- PREDICTIONS TAB -->
+    <div id="tab-predictions" class="tab-panel active">
+      <div class="section-hd">
+        <h2>My Predictions</h2>
+        <p>Enter your score predictions before each match kicks off</p>
+      </div>
+      <div class="week-selector" id="pred-week-btns"></div>
+      <div id="fixtures-list"></div>
+    </div>
+
+    <!-- TABLES TAB -->
+    <div id="tab-tables" class="tab-panel">
+      <div class="section-hd">
+        <h2>League Tables</h2>
+        <p>Updated after results are entered by admin</p>
+      </div>
+      <div id="weekly-table-area"></div>
+      <div id="season-table-area"></div>
+    </div>
+
+    <!-- ALL PREDICTIONS TAB -->
+    <div id="tab-all-preds" class="tab-panel">
+      <div class="section-hd">
+        <h2>All Predictions</h2>
+        <p>Other players' predictions are revealed at first kick-off of each match week</p>
+      </div>
+      <div class="week-selector" id="allpred-week-btns"></div>
+      <div id="all-preds-content"></div>
+    </div>
+
+    <!-- ADMIN TAB -->
+    <div id="tab-admin" class="tab-panel">
+      <div class="section-hd">
+        <h2>Admin Panel</h2>
+        <p>Manage players, enter results, control the competition</p>
+      </div>
+      <div class="admin-grid">
+        <div class="admin-card">
+          <h3>👥 Players</h3>
+          <div class="user-list" id="admin-user-list"></div>
+          <div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border)">
+            <div class="form-field">
+              <label>New Username</label>
+              <input type="text" id="new-username" placeholder="e.g. Dave">
+            </div>
+            <div class="form-field">
+              <label>Password</label>
+              <input type="text" id="new-password" placeholder="e.g. letmein">
+            </div>
+            <div class="form-field">
+              <label>Role</label>
+              <select id="new-role">
+                <option value="player">Player</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <button class="btn-action" onclick="addUser()">Add Player</button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <h3>📋 Enter Results</h3>
+          <div class="form-field">
+            <label>Match Week</label>
+            <select id="admin-week-sel" onchange="renderAdminResults()"></select>
+          </div>
+          <div id="admin-results-list"></div>
+          <button class="btn-action" style="margin-top:1rem" onclick="saveResults()">Save & Score Results</button>
+        </div>
+      </div>
+
+      <div class="admin-card" style="margin-bottom:1rem">
+        <h3>📅 Fixture Weeks</h3>
+        <p style="font-size:0.82rem; color:var(--muted); margin-bottom:1rem">All match weeks for England 🏴󠁧󠁢󠁥󠁮󠁧󠁿 · France 🇫🇷 · Brazil 🇧🇷 · Argentina 🇦🇷</p>
+        <div id="admin-fixture-summary"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DATA ====================
+
+const TEAMS = {
+  ENG: { name: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+  FRA: { name: 'France', flag: '🇫🇷' },
+  BRA: { name: 'Brazil', flag: '🇧🇷' },
+  ARG: { name: 'Argentina', flag: '🇦🇷' },
+  CRO: { name: 'Croatia', flag: '🇭🇷' },
+  GHA: { name: 'Ghana', flag: '🇬🇭' },
+  PAN: { name: 'Panama', flag: '🇵🇦' },
+  SEN: { name: 'Senegal', flag: '🇸🇳' },
+  IRQ: { name: 'Iraq', flag: '🇮🇶' },
+  NOR: { name: 'Norway', flag: '🇳🇴' },
+  MOR: { name: 'Morocco', flag: '🇲🇦' },
+  SCO: { name: 'Scotland', flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿' },
+  HAI: { name: 'Haiti', flag: '🇭🇹' },
+  ALG: { name: 'Algeria', flag: '🇩🇿' },
+  AUT: { name: 'Austria', flag: '🇦🇹' },
+  JOR: { name: 'Jordan', flag: '🇯🇴' },
+};
+
+// All fixtures for the 4 teams - times in BST
+// weekId groups fixtures by prediction week
+const ALL_FIXTURES = [
+  // WEEK 1 - Group stage openers
+  { id: 'f01', weekId: 'W1', home: 'BRA', away: 'MOR', kickoff: '2026-06-13T23:00', venue: 'East Rutherford, NJ' },
+  { id: 'f02', weekId: 'W1', home: 'FRA', away: 'SEN', kickoff: '2026-06-16T20:00', venue: 'East Rutherford, NJ' },
+  { id: 'f03', weekId: 'W1', home: 'ARG', away: 'ALG', kickoff: '2026-06-16T02:00', venue: 'Kansas City' },
+  { id: 'f04', weekId: 'W1', home: 'ENG', away: 'CRO', kickoff: '2026-06-17T21:00', venue: 'Dallas' },
+
+  // WEEK 2 - Group stage round 2
+  { id: 'f05', weekId: 'W2', home: 'ARG', away: 'AUT', kickoff: '2026-06-22T18:00', venue: 'Dallas' },
+  { id: 'f06', weekId: 'W2', home: 'FRA', away: 'IRQ', kickoff: '2026-06-22T22:00', venue: 'Philadelphia' },
+  { id: 'f07', weekId: 'W2', home: 'ENG', away: 'GHA', kickoff: '2026-06-23T21:00', venue: 'Boston' },
+  { id: 'f08', weekId: 'W2', home: 'BRA', away: 'SCO', kickoff: '2026-06-24T23:00', venue: 'Miami' },
+
+  // WEEK 3 - Group stage final round
+  { id: 'f09', weekId: 'W3', home: 'ENG', away: 'PAN', kickoff: '2026-06-27T03:00', venue: 'East Rutherford, NJ' },
+  { id: 'f10', weekId: 'W3', home: 'ARG', away: 'JOR', kickoff: '2026-06-27T03:00', venue: 'Dallas' },
+  { id: 'f11', weekId: 'W3', home: 'BRA', away: 'HAI', kickoff: '2026-06-28T18:00', venue: 'TBC' },
+  { id: 'f12', weekId: 'W3', home: 'FRA', away: 'NOR', kickoff: '2026-06-28T01:00', venue: 'East Rutherford, NJ' },
+];
+
+const WEEKS = [
+  { id: 'W1', label: 'Week 1', desc: 'Group Stage — Round 1', deadline: '2026-06-13T22:59' },
+  { id: 'W2', label: 'Week 2', desc: 'Group Stage — Round 2', deadline: '2026-06-22T17:59' },
+  { id: 'W3', label: 'Week 3', desc: 'Group Stage — Round 3', deadline: '2026-06-27T02:59' },
+];
+
+// Default users - admin pre-registers players
+let USERS = [
+  { username: 'admin', password: 'admin2026', role: 'admin' },
+  { username: 'Player1', password: 'pass1', role: 'player' },
+  { username: 'Player2', password: 'pass2', role: 'player' },
+];
+// Admin is one of the 3 players. All users (including admin) appear in tables and predictions.
+
+// State stored in localStorage (simulating a db)
+function getState() {
+  return JSON.parse(localStorage.getItem('wc2026_state') || JSON.stringify({
+    predictions: {},  // { "username_fixtureid": { home: 1, away: 0 } }
+    results: {},      // { "fixtureid": { home: 2, away: 1 } }
+    users: USERS,
+  }));
+}
+function saveState(s) { localStorage.setItem('wc2026_state', JSON.stringify(s)); }
+
+let currentUser = null;
+let activeWeek = 'W1';
+let allPredWeek = 'W1';
+
+// ==================== AUTH ====================
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  const state = getState();
+  const user = state.users.find(x => x.username.toLowerCase() === u.toLowerCase() && x.password === p);
+  if (!user) { document.getElementById('auth-error').style.display = 'block'; return; }
+  currentUser = user;
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('nav-username').textContent = user.username;
+  if (user.role === 'admin') {
+    document.getElementById('nav-admin').style.display = 'inline';
+    document.getElementById('admin-tab').style.display = 'inline';
+  }
+  initApp();
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+// ==================== APP INIT ====================
+function initApp() {
+  activeWeek = getCurrentWeek();
+  allPredWeek = activeWeek;
+  renderWeekBtns();
+  renderFixtures();
+  renderTables();
+  renderAllPreds();
+  if (currentUser.role === 'admin') renderAdmin();
+}
+
+function getCurrentWeek() {
+  const now = new Date();
+  for (let i = WEEKS.length - 1; i >= 0; i--) {
+    const deadline = new Date(WEEKS[i].deadline);
+    if (now >= deadline) return WEEKS[Math.min(i + 1, WEEKS.length - 1)].id;
+  }
+  return WEEKS[0].id;
+}
+
+// ==================== TABS ====================
+function switchTab(t) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  event.target.classList.add('active');
+  if (t === 'tables') renderTables();
+  if (t === 'all-preds') renderAllPreds();
+  if (t === 'admin') renderAdmin();
+}
+
+// ==================== WEEK BUTTONS ====================
+function renderWeekBtns() {
+  const c = document.getElementById('pred-week-btns');
+  c.innerHTML = WEEKS.map(w =>
+    `<button class="week-btn ${w.id === activeWeek ? 'active' : ''}" onclick="selectWeek('${w.id}')">${w.label}</button>`
+  ).join('');
+
+  const c2 = document.getElementById('allpred-week-btns');
+  c2.innerHTML = WEEKS.map(w =>
+    `<button class="week-btn ${w.id === allPredWeek ? 'active' : ''}" onclick="selectAllPredWeek('${w.id}')">${w.label}</button>`
+  ).join('');
+}
+
+function selectWeek(wid) {
+  activeWeek = wid;
+  document.querySelectorAll('#pred-week-btns .week-btn').forEach((b, i) => {
+    b.classList.toggle('active', WEEKS[i].id === wid);
+  });
+  renderFixtures();
+}
+
+function selectAllPredWeek(wid) {
+  allPredWeek = wid;
+  document.querySelectorAll('#allpred-week-btns .week-btn').forEach((b, i) => {
+    b.classList.toggle('active', WEEKS[i].id === wid);
+  });
+  renderAllPreds();
+}
+
+// ==================== FIXTURES ====================
+function fixtureStatus(fixture) {
+  const state = getState();
+  const now = new Date();
+  const ko = new Date(fixture.kickoff);
+  const result = state.results[fixture.id];
+  if (result !== undefined) return 'scored';
+  if (now >= ko) return 'locked';
+  return 'open';
+}
+
+function formatBST(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
+    ' · ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' BST';
+}
+
+function renderFixtures() {
+  const fixtures = ALL_FIXTURES.filter(f => f.weekId === activeWeek);
+  const state = getState();
+  const week = WEEKS.find(w => w.id === activeWeek);
+  const deadlineStr = formatBST(week.deadline);
+  let html = `<div class="info-box">📅 <strong>${week.label} — ${week.desc}</strong><br>Prediction deadline: first kick-off of each match. Submit before kick-off or that fixture counts as void.</div>`;
+
+  fixtures.forEach(f => {
+    const home = TEAMS[f.home]; const away = TEAMS[f.away];
+    const status = fixtureStatus(f);
+    const predKey = `${currentUser.username}_${f.id}`;
+    const pred = state.predictions[predKey];
+    const result = state.results[f.id];
+
+    const statusLabel = { open:'OPEN', locked:'LOCKED', scored:'SCORED', void:'VOID' }[status];
+    const statusClass = 'status-' + status;
+
+    let scoreSection = '';
+    if (status === 'open') {
+      const hv = pred !== undefined ? pred.home : '';
+      const av = pred !== undefined ? pred.away : '';
+      scoreSection = `
+        <div class="score-inputs">
+          <input class="score-inp" type="number" min="0" max="20" id="h_${f.id}" value="${hv}" placeholder="?">
+          <span class="score-sep">–</span>
+          <input class="score-inp" type="number" min="0" max="20" id="a_${f.id}" value="${av}" placeholder="?">
+        </div>
+        <div style="text-align:center; margin-top:0.5rem">
+          <button class="save-btn" onclick="savePrediction('${f.id}')">Save</button>
+        </div>`;
+    } else if (status === 'locked' || status === 'scored') {
+      if (pred !== undefined) {
+        scoreSection = `<div class="actual-result">${pred.home} – ${pred.away}</div><div style="font-size:0.75rem; color:var(--muted); margin-top:0.2rem">Your prediction</div>`;
+      } else {
+        scoreSection = `<div style="color:var(--muted); font-size:0.85rem; text-align:center">No prediction</div>`;
+      }
+    }
+
+    let ptsHtml = '';
+    if (status === 'scored' && result !== undefined) {
+      const pts = calcPoints(pred, result);
+      const ptsClass = pts === 5 ? 'pts-5' : pts === 3 ? 'pts-3' : pts === 2 ? 'pts-2' : 'pts-0';
+      const ptsLabel = pts === 5 ? '5pts — Correct Score! ⭐' : pts === 3 ? '3pts — Right result + margin ✓' : pts === 2 ? '2pts — Right result ✓' : pred ? '0pts — No luck this time' : '0pts — Void';
+      ptsHtml = `<div class="prediction-pts"><span class="pts-badge ${ptsClass}">${ptsLabel}</span></div>`;
+      const resultSection = `<div class="actual-result">${result.home} – ${result.away}</div><div style="font-size:0.75rem; color:var(--muted); margin-top:0.2rem">Final score</div>`;
+      scoreSection = `
+        <div style="display:flex; gap:1rem; align-items:center; justify-content:center; flex-wrap:wrap">
+          <div style="text-align:center">
+            <div style="font-size:0.72rem; color:var(--muted); margin-bottom:0.2rem">YOUR PREDICTION</div>
+            <div class="actual-result" style="color:${pts > 0 ? 'var(--gold)' : '#f87171'}">${pred !== undefined ? pred.home + ' – ' + pred.away : 'Not predicted'}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:0.72rem; color:var(--muted); margin-bottom:0.2rem">RESULT</div>
+            ${resultSection}
+          </div>
+        </div>`;
+    }
+
+    html += `
+      <div class="fixture-card">
+        <div class="fixture-header">
+          <span class="fixture-date">🕐 ${formatBST(f.kickoff)} · ${f.venue}</span>
+          <span class="fixture-status ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="fixture-body">
+          <div class="team-side"><div class="team-flag">${home.flag}</div><div class="team-name">${home.name}</div></div>
+          <div class="vs-col">
+            <div class="vs-text">vs</div>
+            ${scoreSection}
+          </div>
+          <div class="team-side"><div class="team-flag">${away.flag}</div><div class="team-name">${away.name}</div></div>
+        </div>
+        ${ptsHtml}
+      </div>`;
+  });
+
+  document.getElementById('fixtures-list').innerHTML = html;
+}
+
+function savePrediction(fid) {
+  const hv = document.getElementById('h_' + fid).value;
+  const av = document.getElementById('a_' + fid).value;
+  if (hv === '' || av === '') { showToast('Please enter both scores', true); return; }
+  const now = new Date();
+  const fixture = ALL_FIXTURES.find(f => f.id === fid);
+  if (now >= new Date(fixture.kickoff)) { showToast('Deadline passed — this fixture cannot be predicted', true); return; }
+  const state = getState();
+  state.predictions[`${currentUser.username}_${fid}`] = { home: parseInt(hv), away: parseInt(av) };
+  saveState(state);
+  showToast('Prediction saved! ⚽');
+  renderFixtures();
+}
+
+// ==================== SCORING ====================
+function calcPoints(pred, result) {
+  if (!pred || result === undefined) return 0;
+  const ph = pred.home, pa = pred.away, rh = result.home, ra = result.away;
+
+  // Correct score — always 5pts
+  if (ph === rh && pa === ra) return 5;
+
+  const predDraw = (ph === pa);
+  const realDraw = (rh === ra);
+
+  // Predicted a draw
+  if (predDraw) {
+    // Result is also a draw — margin is always 0, so 3pts (correct result + correct margin)
+    if (realDraw) return 3;
+    // Result is not a draw — 0pts
+    return 0;
+  }
+
+  // Predicted a non-draw result
+  const predMargin = ph - pa, realMargin = rh - ra;
+  const predResult = Math.sign(predMargin), realResult = Math.sign(realMargin);
+  // Wrong result — 0pts
+  if (predResult !== realResult) return 0;
+  // Correct result + correct goal margin — 3pts
+  if (predMargin === realMargin) return 3;
+  // Correct result + incorrect goal margin — 2pts
+  return 2;
+}
+
+function calcPointsBreakdown(pred, result) {
+  const pts = calcPoints(pred, result);
+  return { pts, cs: pts === 5 ? 1 : 0, rplus: pts === 3 ? 1 : 0, rminus: pts === 2 ? 1 : 0 };
+}
+
+// ==================== TABLES ====================
+function renderTables() {
+  const state = getState();
+  const players = state.users.map(u => u.username);
+
+  // Find last scored week
+  let lastScoredWeek = null;
+  WEEKS.forEach(w => {
+    const fixtures = ALL_FIXTURES.filter(f => f.weekId === w.id);
+    const allScored = fixtures.some(f => state.results[f.id] !== undefined);
+    if (allScored) lastScoredWeek = w.id;
+  });
+
+  // Weekly table
+  let weeklyHtml = '';
+  if (lastScoredWeek) {
+    const wfixtures = ALL_FIXTURES.filter(f => f.weekId === lastScoredWeek);
+    const weekData = players.map(p => {
+      let pts = 0;
+      wfixtures.forEach(f => {
+        const pred = state.predictions[`${p}_${f.id}`];
+        const result = state.results[f.id];
+        if (result !== undefined) pts += calcPoints(pred, result);
+      });
+      return { name: p, pts };
+    }).sort((a, b) => b.pts - a.pts);
+
+    const wLabel = WEEKS.find(w => w.id === lastScoredWeek).label;
+    weeklyHtml = `
+      <div class="table-card">
+        <div class="table-title">📊 ${wLabel} Results</div>
+        <table>
+          <thead><tr><th>Pos</th><th>Player</th><th style="text-align:right">Pts</th></tr></thead>
+          <tbody>
+            ${weekData.map((p, i) => {
+              const posClass = i === 0 ? 'pos-1' : i === 1 ? 'pos-2' : i === 2 ? 'pos-3' : 'pos-num';
+              const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+              return `<tr><td><span class="pos-num ${posClass}">${i + 1}</span></td><td>${medal} ${p.name}</td><td style="text-align:right"><span class="pts-num">${p.pts}</span></td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    weeklyHtml = `<div class="empty-state"><div class="icon">⏳</div><p>Weekly table appears after results are entered</p></div>`;
+  }
+
+  // Season table
+  const seasonData = players.map(p => {
+    let pts = 0, cs = 0, rplus = 0, rminus = 0;
+    ALL_FIXTURES.forEach(f => {
+      const result = state.results[f.id];
+      if (result === undefined) return;
+      const pred = state.predictions[`${p}_${f.id}`];
+      const bd = calcPointsBreakdown(pred, result);
+      pts += bd.pts; cs += bd.cs; rplus += bd.rplus; rminus += bd.rminus;
+    });
+    return { name: p, pts, cs, rplus, rminus };
+  }).sort((a, b) => b.pts - a.pts);
+
+  let seasonHtml = '';
+  if (seasonData.some(p => p.pts > 0)) {
+    seasonHtml = `
+      <div class="table-card">
+        <div class="table-title">🏆 Season Table</div>
+        <table>
+          <thead><tr><th>Pos</th><th>Player</th><th style="text-align:center">CS</th><th style="text-align:center">R+</th><th style="text-align:center">R−</th><th style="text-align:right">Pts</th></tr></thead>
+          <tbody>
+            ${seasonData.map((p, i) => {
+              const posClass = i === 0 ? 'pos-1' : i === 1 ? 'pos-2' : i === 2 ? 'pos-3' : 'pos-num';
+              const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+              return `<tr>
+                <td><span class="pos-num ${posClass}">${i + 1}</span></td>
+                <td>${medal} ${p.name}</td>
+                <td style="text-align:center"><span class="stat-num">${p.cs}</span></td>
+                <td style="text-align:center"><span class="stat-num">${p.rplus}</span></td>
+                <td style="text-align:center"><span class="stat-num">${p.rminus}</span></td>
+                <td style="text-align:right"><span class="pts-num">${p.pts}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    seasonHtml = `<div class="empty-state"><div class="icon">🏆</div><p>Season table will appear after first results are entered</p></div>`;
+  }
+
+  document.getElementById('weekly-table-area').innerHTML = weeklyHtml;
+  document.getElementById('season-table-area').innerHTML = seasonHtml;
+}
+
+// ==================== ALL PREDICTIONS ====================
+function renderAllPreds() {
+  const state = getState();
+  const fixtures = ALL_FIXTURES.filter(f => f.weekId === allPredWeek);
+  const players = state.users.map(u => u.username);
+
+  // Find first kickoff of this week
+  const weekFixtures = ALL_FIXTURES.filter(f => f.weekId === allPredWeek);
+  const firstKO = weekFixtures.reduce((min, f) => {
+    const ko = new Date(f.kickoff); return ko < min ? ko : min;
+  }, new Date('2099-01-01'));
+
+  const now = new Date();
+  const revealed = now >= firstKO;
+
+  let html = '';
+  if (!revealed) {
+    html = `<div class="info-box">🔒 Other players' predictions will be revealed at <strong>${formatBST(firstKO.toISOString())}</strong> — the first kick-off of this match week.</div>`;
+  } else {
+    html = `<div class="info-box">✅ Predictions revealed — first match of this week has kicked off.</div>`;
+  }
+
+  fixtures.forEach(f => {
+    const home = TEAMS[f.home]; const away = TEAMS[f.away];
+    const result = state.results[f.id];
+    html += `
+      <div class="fixture-card" style="margin-bottom:0.75rem">
+        <div class="fixture-header">
+          <span class="fixture-date">${home.flag} ${home.name} vs ${away.flag} ${away.name}</span>
+          <span class="fixture-date">${formatBST(f.kickoff)}</span>
+        </div>
+        <div style="overflow-x:auto; padding:0.75rem">
+          <table class="predictions-table">
+            <thead><tr>
+              <th>Player</th><th style="text-align:center">Prediction</th>
+              ${result !== undefined ? '<th style="text-align:center">Result</th><th style="text-align:center">Pts</th>' : ''}
+            </tr></thead>
+            <tbody>
+              ${players.map(p => {
+                const pred = state.predictions[`${p}_${f.id}`];
+                const predDisplay = revealed
+                  ? (pred !== undefined ? `${pred.home} – ${pred.away}` : '<span style="color:var(--muted)">—</span>')
+                  : '<span class="hidden-pred">hidden</span>';
+                const pts = result !== undefined && revealed ? calcPoints(pred, result) : null;
+                const ptsClass = pts === 5 ? 'pts-5' : pts === 3 ? 'pts-3' : pts === 2 ? 'pts-2' : 'pts-0';
+                return `<tr>
+                  <td>${p === currentUser.username ? '<strong>' + p + '</strong>' : p}</td>
+                  <td class="pred-cell">${predDisplay}</td>
+                  ${result !== undefined ? `<td class="pred-cell">${result.home} – ${result.away}</td><td class="pred-cell"><span class="pts-badge ${ptsClass}">${pts}pts</span></td>` : ''}
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('all-preds-content').innerHTML = html;
+}
+
+// ==================== ADMIN ====================
+function renderAdmin() {
+  const state = getState();
+  // User list
+  let uHtml = state.users.map(u => `
+    <div class="user-row">
+      <div><div class="user-name">${u.username}</div><div class="user-role">${u.role} · pw: ${u.password}</div></div>
+      ${u.username !== 'admin' ? `<button class="btn-danger" onclick="removeUser('${u.username}')">Remove</button>` : ''}
+    </div>`).join('');
+  document.getElementById('admin-user-list').innerHTML = uHtml;
+
+  // Week selector for results
+  const sel = document.getElementById('admin-week-sel');
+  sel.innerHTML = WEEKS.map(w => `<option value="${w.id}">${w.label}</option>`).join('');
+  renderAdminResults();
+
+  // Fixture summary
+  let fHtml = WEEKS.map(w => {
+    const wf = ALL_FIXTURES.filter(f => f.weekId === w.id);
+    return `<div style="margin-bottom:1rem">
+      <div style="font-weight:600; margin-bottom:0.5rem; color:var(--gold); font-size:0.85rem">${w.label} — ${w.desc}</div>
+      ${wf.map(f => `<div style="font-size:0.82rem; color:var(--muted); padding:0.25rem 0; border-bottom:1px solid var(--border)">
+        ${TEAMS[f.home].flag} ${TEAMS[f.home].name} vs ${TEAMS[f.away].flag} ${TEAMS[f.away].name} · ${formatBST(f.kickoff)}
+        ${state.results[f.id] !== undefined ? `<span style="color:#4ade80; margin-left:0.5rem">✓ ${state.results[f.id].home}–${state.results[f.id].away}</span>` : ''}
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+  document.getElementById('admin-fixture-summary').innerHTML = fHtml;
+}
+
+function renderAdminResults() {
+  const state = getState();
+  const wid = document.getElementById('admin-week-sel').value;
+  const fixtures = ALL_FIXTURES.filter(f => f.weekId === wid);
+  let html = fixtures.map(f => {
+    const r = state.results[f.id];
+    return `<div class="result-entry">
+      <div class="result-match">${TEAMS[f.home].flag} ${TEAMS[f.home].name} vs ${TEAMS[f.away].flag} ${TEAMS[f.away].name}</div>
+      <div class="result-inputs">
+        <input class="result-inp" type="number" min="0" max="20" id="rh_${f.id}" value="${r !== undefined ? r.home : ''}" placeholder="?">
+        <span style="color:var(--muted)">–</span>
+        <input class="result-inp" type="number" min="0" max="20" id="ra_${f.id}" value="${r !== undefined ? r.away : ''}" placeholder="?">
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('admin-results-list').innerHTML = html;
+}
+
+function saveResults() {
+  const state = getState();
+  const wid = document.getElementById('admin-week-sel').value;
+  const fixtures = ALL_FIXTURES.filter(f => f.weekId === wid);
+  let saved = 0;
+  fixtures.forEach(f => {
+    const hv = document.getElementById('rh_' + f.id).value;
+    const av = document.getElementById('ra_' + f.id).value;
+    if (hv !== '' && av !== '') {
+      state.results[f.id] = { home: parseInt(hv), away: parseInt(av) };
+      saved++;
+    }
+  });
+  saveState(state);
+  showToast(`Results saved for ${saved} fixture${saved !== 1 ? 's' : ''}! Tables updated.`);
+  renderAdmin();
+  renderTables();
+}
+
+function addUser() {
+  const u = document.getElementById('new-username').value.trim();
+  const p = document.getElementById('new-password').value.trim();
+  const r = document.getElementById('new-role').value;
+  if (!u || !p) { showToast('Enter username and password', true); return; }
+  const state = getState();
+  if (state.users.find(x => x.username.toLowerCase() === u.toLowerCase())) {
+    showToast('Username already exists', true); return;
+  }
+  state.users.push({ username: u, password: p, role: r });
+  saveState(state);
+  document.getElementById('new-username').value = '';
+  document.getElementById('new-password').value = '';
+  showToast(`${u} added!`);
+  renderAdmin();
+}
+
+function removeUser(username) {
+  const state = getState();
+  state.users = state.users.filter(u => u.username !== username);
+  saveState(state);
+  showToast(`${username} removed`);
+  renderAdmin();
+}
+
+// ==================== TOAST ====================
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#c0392b' : 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Enter key on login
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>
